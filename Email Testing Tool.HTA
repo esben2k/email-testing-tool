@@ -1,0 +1,298 @@
+<!-- Esben Hansen 2017 -->
+<head>
+<title>Email Testing Tool</title>
+<HTA:APPLICATION 
+     APPLICATIONNAME="Email Testing Tool"
+     SCROLL="no"
+     SINGLEINSTANCE="yes"
+     WINDOWSTATE="Normal"
+	 SysMenu="no"
+	 APPLICATION ICON="#"
+	 >
+	
+</head>
+
+<script language="VBScript">
+    Sub Window_onLoad
+		window.resizeTo 640,800
+		Dim FSO
+		Set FSO = CreateObject("Scripting.FileSystemObject")
+	End Sub
+	
+	Sub ExitHTA
+		self.close()
+	End Sub
+	
+	Sub ReadConfig
+		dim ConfigFile,  strLine, a
+		Set FSO = CreateObject("Scripting.FileSystemObject")
+		ConfigFile = FSO.GetParentFolderName(location.pathname) & "\Email Testing Tool.cfg"
+		If FSO.FileExists(ConfigFile) Then
+			'msgbox "File found on disk"
+			
+			'READ FROM CONFIG FILE BEGIN
+				
+			
+			'READ FROM CONFIG FILE END
+			
+			'strHTML = 
+			DataArea.InnerHTML = strHTML
+		End If
+	End Sub
+	
+	Sub TestSub
+        strHTML = "<table><tr><td>"
+		strHTML = strHTML + serveraddress.Value & "</td></tr>"
+		strHTML = strHTML + "<tr><td>" & serverport.Value & "</td></tr>"
+		strHTML = strHTML + "<tr><td>" & emailfrom.Value & "</td></tr>"
+		strHTML = strHTML + "<tr><td>" & pass.Value & "</td></tr>"
+		strHTML = strHTML + "<tr><td>" & emailto.Value & "</td></tr>"
+		strHTML = strHTML + "<tr><td>" & emailsubject.Value & "</td></tr>"
+		strHTML = strHTML + "<tr><td>" & emailbody.Value & "</td></tr>"
+		strHTML = strHTML + "<tr><td>" & authtype.Value & "</td></tr>"
+		strHTML = strHTML + "<tr><td>" & encryption.Value & "</td></tr>"
+		strHTML = strHTML + "<tr><td>" & attachment.Value & "</td></tr>"
+<!--		strHTML = strHTML + "<tr><td>" & testtype.Value & "</td></tr>" -->
+		strHTML = strHTML + "</table>"
+		DataArea.InnerHTML = strHTML
+    End Sub
+	
+	Sub GetOSVersion
+       strComputer = "."
+           Set objWMIService = GetObject("winmgmts:\\" & strComputer &  "\root\cimv2")
+
+           Set colOperatingSystems = objWMIService.ExecQuery _
+               ("Select * from Win32_OperatingSystem")
+
+           For Each objOperatingSystem in colOperatingSystems
+                strHTML = strHTML & objOperatingSystem.Caption & " " & objOperatingSystem.Version & "<br>"
+           Next
+		   DataArea.InnerHTML = strHTML
+    End Sub
+		
+	Sub LocateCFG
+		Dim FSO
+		Set FSO = CreateObject("Scripting.FileSystemObject")
+		'MsgBox FSO.GetParentFolderName(location.pathname)
+		DataArea.InnerHTML = FSO.GetParentFolderName(location.pathname) & "\Email Testing Tool.cfg"
+	End Sub
+	
+	Sub ChangeSendType
+		DataArea.InnerHTML = "You changed the sendtype to " & testtype.Value
+	End Sub
+	
+	<!--Sub SendEmail(e)-->
+	Sub SendEmail
+		DataArea.InnerHTML = e
+		'msgbox "SENDING EMAIL(S)"
+		'SCRIPT TO SEND MULTIPLE EMAILS HERE
+		' Set the mail server configuration
+		Set objMessage = CreateObject("CDO.Message")
+		'Set objConfig=CreateObject("CDO.Configuration")
+		'Type of authentication, NONE 0, Basic1 (Base64 encoded), NTLM2
+		objMessage.Configuration.Fields.Item("http://schemas.microsoft.com/cdo/configuration/smtpauthenticate")= authtype.Value
+		objMessage.Configuration.Fields.Item("http://schemas.microsoft.com/cdo/configuration/sendusing")=2 ' cdoSendUsingPort
+		objMessage.Configuration.Fields.Item("http://schemas.microsoft.com/cdo/configuration/smtpserver")= serveraddress.Value
+		
+		'Is there a SMTP username specified?
+		If IsNull(username.Value) Then
+			'If not, use the email from field as username
+			objMessage.Configuration.Fields.Item("http://schemas.microsoft.com/cdo/configuration/sendusername")= emailfrom.Value
+			efrom = emailfrom.Value
+		Else
+			'Use the username field value as smtp username
+			objMessage.Configuration.Fields.Item("http://schemas.microsoft.com/cdo/configuration/sendusername")= username.Value
+			efrom = emailfrom.Value
+		End If
+		
+		
+		objMessage.Configuration.Fields.Item("http://schemas.microsoft.com/cdo/configuration/sendpassword")= pass.Value
+		objMessage.Configuration.Fields.Item("http://schemas.microsoft.com/cdo/configuration/smtpserverport") = serverport.Value
+		objMessage.Configuration.Fields.Item("http://schemas.microsoft.com/cdo/configuration/smtpconnectiontimeout") = 60
+		objMessage.Configuration.Fields.Item("http://schemas.microsoft.com/cdo/configuration/smtpusessl") = encryption.Value
+		objMessage.Configuration.Fields.Update
+
+		objMessage.From=efrom
+		objMessage.ReplyTo=efrom
+		objMessage.To=emailto.Value
+		objMessage.Subject=emailsubject.Value
+		objMessage.TextBody=emailbody.Value
+		'Check if attachment=true
+		If attachment.Value = "true" Then
+			'Does attachment file exist
+			'Dim FSO
+			Set FSO = CreateObject("Scripting.FileSystemObject")
+			attachmentpath = FSO.GetParentFolderName(location.pathname) & "\attachment.pdf"
+			If FSO.FileExists(attachmentpath) Then
+				strConfig = "Attachment located on disk"
+				'MsgBox "Attachment located on disk"
+				objMessage.AddAttachment attachmentpath
+			Else
+				'MsgBox "Attachment NOT located on disk, will send without"
+				strConfig = "Attachment NOT located on disk, will send without"
+			End If
+			DataArea.InnerHTML = strConfig
+		End if
+		
+		
+		
+		Dim counter, subj, maxmails, emailsubj, starttime, emailtime, emailelapsed, totalelapsed
+		counter = 0
+		maxmails = numemails.Value
+		strConfig = strConfig & "<br>Max mails: " & maxmails & "<br>"
+		DataArea.InnerHTML = strConfig
+		'msgbox "Max mails: " & maxmails
+		emailsubj = emailsubject.Value
+		elapsed = null	
+		emailtime = null
+		starttime = Timer
+		Do
+			subj = emailsubj
+			counter = counter + 1
+			subj = Cstr(subj) + " - Email Number " + Cstr(counter) + " of " + Cstr(maxmails) & " - Sent at " & Now()
+			objMessage.Subject = subj
+			emailtime = Timer
+			
+			'Error Handling
+			On Error Resume Next
+
+			objMessage.Send
+			
+			If Err.Number <> 0 Then
+				strHTML = "Error encountered:<br>Number     :" & Err.Number &"<br>Number (Hex) :" & Hex(Err.Number) &"<br>Source: " & Err.Source & "<br>Description : " & Err.Description & "<br><br>Stopping program."
+				DataArea.InnerHTML = strConfig & strHTML
+				Exit Sub
+			End if
+			
+			elapsed = Timer - emailtime
+			strHTML = "Sent " & Int(counter) & " out of " & Int(maxmails) & "<br> Send duration was " & Round(elapsed,4)
+			DataArea.InnerHTML = strConfig & strHTML
+		Loop Until counter = INT(maxmails)
+		totalelapsed = Timer - starttime
+		strHTML = strHTML & "<br> ------------------------------------"
+		'strHTML = strHTML & "<br> totalelapsed" &totalelapsed
+		strHTML = strHTML & "<br> Total time for email transmission was: " & Round(totalelapsed,2) & " seconds <br> Average duration per email sent was: " & Round((totalelapsed/INT(maxmails)),2) & " seconds"
+		DataArea.InnerHTML = strConfig & strHTML
+	
+	End Sub
+	
+	Function ReadIniFile(sFSpec)
+		Dim dicTmp : Set dicTmp = CreateObject("Scripting.Dictionary")
+		Dim tsIn   : Set tsIn   = goFS.OpenTextFile(sFSpec)
+		Dim sLine, sSec, aKV
+		Do Until tsIn.AtEndOfStream
+			sLine = Trim(tsIn.ReadLine())
+			If "[" = Left(sLine, 1) Then
+				sSec = Mid(sLine, 2, Len(sLine) - 2)
+				Set dicTmp(sSEc) = CreateObject("Scripting.Dictionary")
+			Else
+			If "" <> sLine Then
+				aKV = Split(sLine, "=")
+				If 1 = UBound(aKV) Then
+					dicTmp(sSec)(Trim(aKV(0))) = Trim(aKV(1))
+			   End If
+			End If
+		 End If
+		Loop
+		tsIn.Close
+		Set ReadIniFile = dicTmp
+	End Function 
+</script>
+
+<body>
+<body bgcolor="silver">
+<table style="width:100%" style="font-family: Calibri;">
+	<tr>
+	</tr>
+	<tr>
+		<td>Server Address</td>
+		<td><input type="text" name="serveraddress" value="your_emailserver.com" size="50"></td> 
+	</tr>
+	<tr>
+		<td>Server Port</td>
+		<td><input type="text" name="serverport" value="25"></td> 
+	</tr>
+	<tr>
+		<td>Email From Address</td>
+		<td><input type="text" name="emailfrom" value="your@emailaddress.com" size="50"></td> 
+	</tr>
+	<tr>
+		<td>Username (if applicable)</td>
+		<td><input type="text" name="username" value="" size="50"></td> 
+	</tr>
+	<tr>
+		<td>Email Sender Password</td>
+		<td><input type="text" name="pass" value="" size="50"></td> 
+	</tr>
+	<tr>
+		<td>Email Recipient Address</td>
+		<td><input type="text" name="emailto" value="your@emailaddress.com" size="50"></td> 
+	</tr>
+	<tr>
+		<td>Email Subject</td>
+		<td><input type="text" name="emailsubject" value="Email Test" size="50"></td> 
+	</tr>
+	<tr>
+		<td>Email Body Text</td>
+		<td><input type="text" name="emailbody" value="This is the email body text" size="50"></td> 
+	</tr>
+	<tr>	
+		<td>Authentication Type</td>
+		<td>
+			<select size="1" name="authtype">
+				<option value="0">Anonymous</option>
+				<option value="1">Basic</option>
+				<option value="2">NTLM</option>
+			</select>
+		</td>
+	</tr>
+	<tr>
+		<td>Encryption</td>
+		<td>
+			<select size="1" name="encryption">
+				<option value="false">None</option>
+				<option value="true">SSL/TLS</option>
+			</select>
+		</td>
+	</tr>
+	<tr>
+		<td>Attach Encrypted PDF</td>
+		<td>
+			<select size="1" name="attachment">
+				<option value="true">Attach file</option>
+				<option value="false">No attachment</option>
+			</select>
+		</td>
+	</tr>
+	<!--<tr>
+		<td>Testing Type</td>
+		<td>
+			<select size="1" name="testtype" onChange="ChangeSendType">
+				<option value="single">Single</option>
+				<option value="multi">Multi</option>
+			</select>
+		</td>
+	</tr>-->
+	<tr>
+		<td>Number of emails to send</td>
+		<td><input type="text" name="numemails" value="1">
+		</td>
+	</tr>
+</table>
+<p>
+<hr>
+<table>
+<tr>
+<td><input type="button" value="Email" name="send"  onClick="SendEmail"></td>
+<!--<td><input type="button" value="Email" name="send"  onClick="SendEmail testtype.Value"></td> -->
+<td><input type="button" value="Exit" name="run_button4"  onClick="ExitHTA"></td>
+</tr>
+<tr>
+<td><input type="button" value="Run Test Script" name="run_button"  onClick="TestSub"></td>
+<td><input type="button" value="Config file?" name="run_button3"  onClick="LocateCFG"></td> 
+<td><input type="button" value="OS Version" name="run_button2"  onClick="GetOSVersion"></td> 
+</tr>
+</table>
+<hr>
+<span id = "DataArea" style="font-family: Calibri;"></span>
+</body>
